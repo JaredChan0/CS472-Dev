@@ -74,6 +74,11 @@ static void init_header(cs472_proto_header_t *header, int req_cmd, char *reqData
     header->cmd = req_cmd;
 
     //TODO: Setup other header fields, eg., header->ver, header->dir, header->atm, header->ay
+    header->ver = PROTO_VER_1;
+    header->dir = DIR_SEND;
+    header->atm = TERM_WINTER;
+    header->ay = 2025;
+    strcpy(header->course, "CS472\0\0");
 
     //switch based on the command
     switch(req_cmd){
@@ -81,6 +86,7 @@ static void init_header(cs472_proto_header_t *header, int req_cmd, char *reqData
             strncpy(header->course, "NONE", sizeof(header->course));
             //length will be the header plus the size of the message
             //adding one more to get the null set to the server
+
             header->len = sizeof(cs472_proto_header_t) + strlen(reqData) + 1; 
             break;
         case CMD_CLASS_INFO:
@@ -140,6 +146,13 @@ static void start_client(cs472_proto_header_t *header, uint8_t *packet){
      *      send() - recall that the formatted packet is passed in
      *      recv() - get the response back from the server
      */
+    ret = connect(data_socket, (const struct sockaddr *) &addr, sizeof(struct sockaddr_in));
+    if (ret == -1) {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
+    send(data_socket, send_buffer, sizeof(send_buffer), header->dir);
+    recv(data_socket, recv_buffer, sizeof(recv_buffer), header->dir);
 
     //Now process what the server sent, here is some helper code
     cs472_proto_header_t *pcktPointer =  (cs472_proto_header_t *)recv_buffer;
