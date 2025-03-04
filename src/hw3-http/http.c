@@ -74,7 +74,17 @@ char *strnstr(const char *s, const char *find, size_t slen)
 	return ((char *)s);
 }
 
-
+/**
+ * Creates an active socket connected to a given host and port number
+ * 
+ * Functions 
+ * bcopy - copies n bytes from src to dest
+ * 
+ * @param {const char *} host   - A server connected to a network for sending and receiving data
+ * @param {uint16_t} port       - The unique address to allow communication between computers and networks
+ * @returns {int} sock          - An active file descriptor of the newly created socket \
+ * @returns -1 || -2            - if socket cannot be created || hostname is NULL
+ */
 int socket_connect(const char *host, uint16_t port){
     struct hostent *hp;
     struct sockaddr_in addr;
@@ -85,7 +95,8 @@ int socket_connect(const char *host, uint16_t port){
 		return -2;
 	}
     
-    
+    // Copies the number of bytes within the host entry's address length 
+    // from the first address of the name server to address of the socket
 	bcopy(hp->h_addr_list[0], &addr.sin_addr, hp->h_length);
 	addr.sin_port = htons(port);
 	addr.sin_family = AF_INET;
@@ -105,7 +116,17 @@ int socket_connect(const char *host, uint16_t port){
     return sock;
 }
 
-
+/**
+ * Calculates the length of a given HTTP header
+ * 
+ * This function creates a char pointer `end_ptr` that attempts to find the end of the
+ * HTTP header within the given length of the buffer.
+ * 
+ * @param {char *} http_buff    - A pointer to a char buffer containing the HTTP header
+ * @param {int} http_buf_len    - The number of characters to search through the buffer
+ * @returns {int} header_len    - The length of the HTTP header \
+ * @returns -1                  - If the end of the HTTP header could not be found
+ */
 int get_http_header_len(char *http_buff, int http_buff_len){
     char *end_ptr;
     int header_len = 0;
@@ -121,7 +142,18 @@ int get_http_header_len(char *http_buff, int http_buff_len){
     return header_len;
 }
 
-
+/**
+ * Calculates the length of a given HTTP header's content
+ * 
+ * Functions
+ * bzero - sets the first n bytes of a memory space s to 0
+ * strchr - returns a pointer to the first occurrence of a character in a string
+ * 
+ * @param {char *} http_buff        - A pointer to a char buffer containing the HTTP header
+ * @param {int} http_header_len     - The number of characters to search through the header
+ * @returns {int} content_len       - The length of the HTTP header content \
+ * @returns 0                       - If the content length could not be found
+ */
 int get_http_content_len(char *http_buff, int http_header_len){
     char header_line[MAX_HEADER_LINE];
 
@@ -129,11 +161,16 @@ int get_http_content_len(char *http_buff, int http_header_len){
     char *end_header_buff = http_buff + http_header_len;
 
     while (next_header_line < end_header_buff){
+        // Sets every byte in the header line to 0
         bzero(header_line,sizeof(header_line));
+        // Reads the data in next_header_line into header_line up to the header end
         sscanf(next_header_line,"%[^\r\n]s", header_line);
 
+        // Compare the content of the header_line to CL_HEADER
         char *isCLHeader2 = strcasecmp(header_line,CL_HEADER);
         char *isCLHeader = strcasestr(header_line,CL_HEADER);
+        // If a CL_HEADER is found, attempt to calculate the content length
+        // Otherwise, move onto the next header line
         if(isCLHeader != NULL){
             char *header_value_start = strchr(header_line, HTTP_HEADER_DELIM);
             if (header_value_start != NULL){

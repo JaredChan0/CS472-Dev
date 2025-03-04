@@ -1,0 +1,24 @@
+Name: Jared Chandavong
+Email: jac696
+Date: 02/28/2025
+
+command: make run-ka3
+1. Start Time: 1740603924, End Time: 1740603926, Difference = 2
+2. Start Time: 1740603986, End Time: 1740603990, Difference = 4
+3. Start Time: 1740604002, End Time: 1740604004, Difference = 2
+4. Start Time: 1740604006, End Time: 1740604010, Difference = 4
+5. Start Time: 1740604015, End Time: 1740604017, Difference = 2
+Average Response Time: 2.8 seconds
+
+command: make run-cc3
+1. Start Time: 1740604065, End Time: 1740604065, Difference = 0
+2. Start Time: 1740604078, End Time: 1740604078, Difference = 0
+3. Start Time: 1740604084, End Time: 1740604084, Difference = 0
+4. Start Time: 1740604094, End Time: 1740604095, Difference = 1
+5. Start Time: 1740604102, End Time: 1740604102, Difference = 0
+Average Responsse Time: 0.2 seconds
+
+From these timings, we can infer that the `Keep-Alive` version of connecting has a significantly improved response
+time as compared to `Connection: Close`. This is because the persistent connection allows for the program to send
+and receive multiple HTTP requests over the same connection, unlike `Connection: Close` that needs to create a 
+new connection for each request.

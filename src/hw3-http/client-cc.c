@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <time.h>
+
 #define  BUFF_SZ 1024
 
 char recv_buff[BUFF_SZ];
@@ -36,32 +38,36 @@ int process_request(const char *host, uint16_t port, char *resource){
 
     sock = socket_connect(host, port);
     if(sock < 0) return sock;
+    
+    // 1. Generate request
+    char *req = generate_cc_request(host, port, resource);
 
-    //---------------------------------------------------------------------------------
-    //TODO:   Implement Send/Receive loop for Connection:Closed
-    //
-    // 1. Generate the request - see the helper generate_cc_request
-    // 2. Send the request to the HTTP server, make sure the send size
-    //    matches the length of the generated request from generate_cc_request().
-    // 3. Loop and receive the response data from the server.  You must
-    //    loop, and you must save the data received inside of recv_buff.
-    // 4. Each interation through the loop print out the data you receive.
-    //    Note, the data will not be null terminated so be careful that
-    //    you use the size of the data returned to control how the data 
-    //    is printed.  Here is a format string that can help you out.
-    //  
-    //        printf("%.*s", bytes_recvd, recv_buff);
-    //
-    // 5. This function should return the total number of bytes received
-    //    from the server, so why you are looping around, make sure to
-    //    accumulate all of the data received and return this value. 
-    //---------------------------------------------------------------------------------
+    // 2. Send request to HTTP server
+    char send_buff[sizeof(req)];
+    int ret = send(sock, send_buff, sizeof(send_buff), 0x0);
 
+    // 3. Loop response data
+    while (1) {
+        int bytes_recvd = recv(sock, recv_buff, sizeof(recv_buff), 0x0);
+        if (bytes_recvd == -1 || bytes_recvd == 0) {
+            break;
+        } else {
+            // 4. Print response data
+            printf("%.*s \n ", bytes_recvd, recv_buff);
+
+            // 5. Accumulate response bytes
+            total_bytes += bytes_recvd;
+        }
+    }
     close(sock);
     return total_bytes;
 }
 
+time_t start_time;
+time_t end_time;
+
 int main(int argc, char *argv[]){
+    time(&start_time);
     int sock;
 
     const char *host = DEFAULT_HOST;
@@ -91,4 +97,7 @@ int main(int argc, char *argv[]){
             process_request(host, port, resource);
         }
     }
+
+    time(&end_time);
+    printf("Start Time: %ld\nEnd Time: %ld\n", start_time, end_time);
 }
