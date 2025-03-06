@@ -1,0 +1,215 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{tgbonum}
+
+\title{Programming Assignment 4}
+\author{Jared Chandavong}
+
+\begin{document}
+
+\maketitle
+
+\newpage
+{\fontfamily{cmss}\selectfont
+\section{Function Descriptions}
+
+\subsection{static dp\_connp dpinit()}
+This function initializes a Drexel Protocol (DP) connection.
+
+\subsection{void dpclose(dp\_connp dpsession)}
+This function takes in a Drexel Protocol (DP) session and closes it by freeing its allocated memory.
+
+\subsection{int dpmaxdgram()}
+This function returns the Drexel Protocol's (DP) maximum buffer size. 
+
+\subsection{dp\_connp dpServerInit(int port)}
+This function initializes a Drexel Protocol (DP) server over UDP by behaving as follows: \newline
+\indent Calls dpinit() to allocate a new dp connection. If initialization fails, it \newline 
+\indent\indent prints an error and returns NULL. \newline
+\indent Attempts to create a UDP socket. If socket creation fails, it prints an \newline
+\indent\indent error and returns NULL. \newline
+\indent Fills up the sockaddr\_in structure with appropriate information. \newline
+\indent Enables the server to reuse the port. If setting the option fails, it prints \newline
+\indent\indent an error, closes the socket, and returns NULL. \newline
+\indent Bind the Socket. If binding fails, it prints an error, closes the socket, and \newline
+\indent\indent returns NULL. \newline
+\indent Sets the dp initialization to true and returns the connection.
+
+\subsection{dp\_connp dpClientInit(char *addr, int port)}
+This function initializes a Drexel Protocol (DP) client over UDP by behaving as follows: \newline
+\indent Calls dpinit() to allocate a new dp connection. If initialization fails, it \newline 
+\indent\indent prints an error and returns NULL. \newline
+\indent Attempts to create a UDP socket. If socket creation fails, it prints an \newline
+\indent\indent error and returns NULL. \newline
+\indent Fills up the sockaddr\_in structure with appropriate information. \newline
+\indent Copies the memory of the outbound address into the inbound address. \newline
+\indent Returns the connection.
+
+\subsection{int dprecv(dp\_connp dp, void *buff, int buff\_sz)}
+This function recieves PDU of an inbound Drexel Protocol (DP) connection by behaving as follows: \newline
+\indent Calls dprecvdgram(...) to store the datagram into a buffer and returns a \newline
+\indent\indent received length. If the length is -16, then it returns a closed connection \newline
+\indent\indent signal. \newline
+\indent Convert the datagram into a DP PDU. \newline
+\indent If the recieved length is greater than the size of the PDU header, then \newline
+\indent\indent copy the memory of the payload into a buffer. \newline
+\indent Return the size of the datagram stored in the inbound PDU.
+
+\subsection{static int dprecvdgram(dp\_connp dp, void *buff, int buff\_sz)}
+This function recieves a datagram of an inbound Drexel Protocol (DP) connection and validates its by behvaing as follows: \newline
+\indent If the buffer size of the datagram is greater than the maximum DP \newline
+\indent\indent datagram, then return an error that the DP buffer is oversized. \newline
+\indent Calls dprecvraw(...) to get the number of bytes in the inbound datagram. \newline
+\indent If the inbound bytes is less than the size of the PDU header, then an \newline
+\indent\indent error code is made that the datagram is bad. \newline
+\indent Copies the memory of the inbound datagram into a PDU struct. If the \newline 
+\indent\indent PDU's datagram size is greater than the buffer size, then an error \newline
+\indent\indent code is made that the buffer is undersized. \newline
+\indent Updates the sequence number and prepares the acknowledgement packet. \newline
+\indent Creates and fills out an outbound PDU to be sent out. \newline
+\indent If there is an error code, send a error message. \newline
+\indent Handles different message types based off the inbound PDU. If an \newline
+\indent\indent error occurs in any case, then return an error messeage. \newline
+\indent Returns the number of bytes from the inbound datagram.
+
+\subsection{static int dprecvraw(dp\_connp dp, void *buff, int buff\_sz)}
+This function recieves raw UDP datagrams and validates them by behaving as follows: \newline
+\indent If the inbound socket address is not initialized, then return an error. \newline
+\indent Calls recvfrom(...) to store the datagram into a buffer. \newline
+\indent If the received bytes is less than 0, then return an error. \newline
+\indent Set the outbound socket address is set to initialized. \newline
+\indent Prints the inbound PDU datagram and returns the number of bytes.
+
+\subsection{int dpsend(dp\_connp dp, void *sbuff, int sbuff\_sz)}
+This function validates the buffer being sent by behaving as follows: \newline
+\indent If the size of the send buffer is larger than the max DP datagram size, \newline
+\indent\indent then return an error code that the DP buffer is undersized. \newline
+\indent Calls dpsenddgram(...) to get the send size and returns it.
+
+\subsection{static int dpsenddgram(dp\_connp dp, void *sbuff, int sbuff\_sz)}
+This function sends a Drexel Protocol (DP) UDP datagram to a receiver by behaving as follows: \newline
+\indent If the outbound address is not initialized, then return an error. \newline
+\indent If the send buffer size is greater than the max buffer size, then return an \newline
+\indent\indent error. \newline
+\indent Builds the PDU and outbound buffer. \newline
+\indent Copies the memory of the send buffer into the DP buffer. \newline
+\indent Calls dpsendraw(...) to get the number of bytes in the outbound. \newline
+\indent If the outbound bytes is not equal to the send size, then print a warning. \newline
+\indent Updates the sequence number after the send. \newline
+\indent Calls dprecvraw(...) to get an ack packet. If the inbound bytes is less \newline
+\indent\indent then the size of the PDU header and not an ack packet, then print \newline
+\indent\indent a expection error. \newline
+\indent Returns the difference between the outbound bytes and PDU header size.
+
+\subsection{static int dpsendraw(dp\_connp dp, void *sbuff, int sbuff\_sz)}
+This function sends raw UDP datagrams and sends it to the appropriate receiver by behaving as follows: \newline
+\indent If the outbound address is not initialized, then return an error. \newline
+\indent Calls sendto(...) to store the bytes into the outbound address. \newline
+\indent Calls print\_out\_pdu(...) to print the data in the outbound PDU. \newline
+\indent Returns the number of outbound bytes.
+
+\subsection{int dplisten(dp\_connp dp)}
+This functions ensures proper Drexel Protocol (DP) connection handshake between client and server by behaving as follows: \newline
+\indent If the inbound socket address is not initialized, then return an error. \newline
+\indent Calls dprecvraw(...) to receive a connection request. If the received size \newline
+\indent\indent is not equal to the size of the PDU header, then return an error. \newline
+\indent Calls dpsendraw(...) to send an acknowledgement packet. If the send size \newline
+\indent\indent is not equal to size of the PDU header, then return a error. \newline
+\indent Set the DP's connection to be true and returns true.
+
+\subsection{int dpconnect(dp\_connp dp)}
+This function connects a client to a server by behaving as follows: \newline
+\indent If the outbound socket address is not initialized, then return an error. \newline
+\indent Calls dpsendraw(...) to send a connection request. If send size is not \newline
+\indent\indent equal to the PDU header size, then return an error. \newline
+\indent Calls dprecvraw(...) to receive an acknowledgement packet. If receive \newline
+\indent\indent size is not equal to the PDU header size, then return an error. \newline
+\indent\indent If the recieved messeage type isn't CNTACT, then return an error. \newline
+\indent Increments the sequence and set the connection to true. \newline
+\indent Returns true.
+
+\subsection{int dpdisconnect(dp\_connp dp)}
+This function disconnects a client from a server by behaving as follows: \newline
+\indent Builds a close request. \newline
+\indent Calls dpsendraw(...) to send a close request. If the send size is not \newline
+\indent\indent equal to the PDU header size, then return an error. \newline
+\indent Calls dprecvraw(...) to receive an acknowledgement packet. If receive \newline
+\indent\indent size is not equal to the PDU header size, then return an error. \newline
+\indent\indent If the recieved messeage type isn't CNTACT, then return an error. \newline
+\indent Calls dpclose(...) to close the DP connection, and returns closed code.
+
+\subsection{void * dp\_prepare\_send(dp\_pdu *pdu\_ptr, void *buff, int buff\_sz)}
+This function prepares a data buffer for sending a Drexel Protocol (DP) message by behaving as follows: \newline
+\indent If the buffer size is less than the PDU header size, the return an error. \newline
+\indent Sets the bytes in the buffer to 0. \newline
+\indent Copies the memory of the PDU to be sent into the buffer. \newline
+\indent Returns the sum of the buffer and the PDU header size.
+
+\subsection{void print\_out\_pdu(dp\_pdu *pdu)}
+This is a helper for validating the printing of an outbound PDU. It takes a PDU and behaves as follows: \newline
+\indent If the debug mode is not equal to 1, then return. \newline
+\indent Prints out seperator for PDU details. \newline
+\indent Calls print\_pud\_details(...) to print out the PDU's details.
+
+\subsection{void print\_in\_pdu(dp\_pdu *pdu)}
+This is a helper for validating the printing of an inbound PDU. It takes a PDU and behaves as follows: \newline
+\indent If the debug mode is not equal to 1, then return. \newline
+\indent Prints out seperator for PDU details. \newline
+\indent Calls print\_pud\_details(...) to print out the PDU's details.
+
+\subsection{static void print\_pdu\_details(dp\_pdu *pdu)}
+This is a helper for printing out a PDU's details.
+
+\subsection{static char * pdu\_msg\_to\_string(dp\_pdu *pdu)}
+This is a helper that takes a PDU and returns the messeage type it has.
+
+\newpage
+\section{3 Sub-layers}
+
+\subsection{Top-Layer}
+This layer is comprised of functions such as dpsend() and dprecv() in order to handle
+application-level data transfer and receive by preparing and sequencing data.
+
+\subsection{Middle-Layer}
+This layer is comprised of functions such as dpsenddgram() and dprecvdgram(). Here, data
+is encapsulated into PDUs and deals with the appropriate message types and acknowledgements.
+
+\subsection{Bottom-Layer}
+This layer is comprised of functions such as dpsendraw() and dprecvraw(). Raw UDP data is
+transfered of the network.
+
+\subsection{Is this good design?}
+I believe that this is good design, especially in terms of modulation. Since each layer is contained
+within their own functions handling specific responsibilities, it's much easier to error check and
+change accordingly. Furthermore, any modification to these functions will only cause isolated effects
+that can be used for testing without affecting the other layers.
+
+\section{Sequence Numbers}
+In the du-proto, sequence numbers are used to track the order of messages to be processed and to ensure 
+that communication between client and server are consistent. As messages are sent to the receiver, ACK
+packets are returned with a sequence number for the sender to verify that they have received the correct
+message packet. It is also used to handle errors where missing sequence numbers can indicate packet loss. 
+\newline \newline
+We update the sequence number for ACK responses because since every message has its own sequence number,
+we want to avoid a possible issue of the sender ignoring the response for having a duplicate number. 
+Furthermore, making sure that each message has a unique sequence number also allows for control messages
+to be distinguish from one another so that every packet is processed correctly in order.
+
+\section{ACK vs TCP}
+I think that one major example of a limitation of this approach compared to traditional TCP is when
+we are transfering large amounts of data. The issue here is that transferring one packet at a time
+for an extensively large set of data, as well as waiting for each packet to receive an acknowledgement,
+will take a long time to process. In contrast, the traditional TCP approach would be able take on
+multiple packets at a time along with acknowledgement for each one, making it generally faster with
+reduced overhead.
+
+\section{UDP vs TCP}
+When we set up and managed UDP sockets, data is prepared for transfer as discrete packages, or datagrams, 
+in an ordered sequence of specified designations before a connection between the sender and the receiver 
+is established. In constrast, TCP prepares data as a continuous stream of back and forth responses after
+a connection between the sender and the receiver is established. Because of these differences, a key notion
+that can be derived is that UDP is faster in transferring data than TCP, but at a cost in that UDP is also 
+less reliable in guaranteeing the delivery of packets unlike TCP.
+
+}
+\end{document}
