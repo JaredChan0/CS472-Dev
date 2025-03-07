@@ -120,22 +120,24 @@ dp_connp dpClientInit(char *addr, int port) {
 
 int dprecv(dp_connp dp, void *buff, int buff_sz){
     int recvtotal = 0;
-    int chunk_sz = 0;
+    void *rptr = buff;
+    bool isFragment;
     
-    // Instead of rejecting datagrams greater than the biggest, we can break
-    // them down into sizeable chunks 
-    while (recvtotal < buff_sz) {
-        if (buff_sz - recvtotal > DP_MAX_BUFF_SZ) {
-            chunk_sz = DP_MAX_BUFF_SZ;
-        } else {
-            chunk_sz = buff_sz - recvtotal;
+    do {
+        int rcvLen = dprecvdgram(dp, _dpBuffer, sizeof(_dpBuffer));
+        if (rcvLen < 0) {
+            return rcvLen;
         }
-        int rcvLen = dprecvdgram(dp, (char *)buff + recvtotal, chunk_sz);
-        if (rcvLen < 0) return rcvLen;
+        dp_pdu *pduPtr = (dp_pdu *)_dpBuffer;
+        void *dataPtr = _dpBuffer + sizeof(dp_pdu);
+        memcpy(rptr, dataPtr, pduPtr->dgram_sz);
+        rptr += rcvLen;
         recvtotal += rcvLen;
-        if (rcvLen < chunk_sz) break;
-    }
+        isFragment = IS_MT_FRAGMENT(pduPtr->mtype);
+    } while (isFragment);
+
     return recvtotal;
+
     /*
     dp_pdu *inPdu;
     int rcvLen = dprecvdgram(dp, _dpBuffer, sizeof(_dpBuffer));
@@ -210,6 +212,12 @@ static int dprecvdgram(dp_connp dp, void *buff, int buff_sz){
             if (actSndSz != sizeof(dp_pdu))
                 return DP_ERROR_PROTOCOL;
             break;
+        case DP_MT_SNDFRAG:
+            outPdu.mtype = DP_MT_SNDFRAGACK;
+            actSndSz = dpsendraw(dp, &outPdu, sizeof(dp_pdu));
+            if (actSndSz != sizeof(dp_pdu))
+                return DP_ERROR_PROTOCOL;
+        break;
         case DP_MT_CLOSE:
             outPdu.mtype = DP_MT_CLOSEACK;
             actSndSz = dpsendraw(dp, &outPdu, sizeof(dp_pdu));
@@ -263,20 +271,16 @@ static int dprecvraw(dp_connp dp, void *buff, int buff_sz){
 }
 
 int dpsend(dp_connp dp, void *sbuff, int sbuff_sz){
-    int sendtotal = 0;
-    int chunk_sz = 0;
+    void *sptr = sbuff;
+    int sendtotal = sbuff_sz;
 
-    // Instead of rejecting datagrams greater than the biggest, we can break
-    // them down into sizeable chunks 
-    while (sendtotal < sbuff_sz) {
-        if (sbuff_sz - sendtotal > DP_MAX_BUFF_SZ) {
-            chunk_sz = DP_MAX_BUFF_SZ;
-        } else {
-            chunk_sz = sbuff_sz - sendtotal;
+    while (sendtotal > 0) {
+        int sndSz = dpsenddgram(dp, sptr, sendtotal);
+        if (sndSz < 0) {
+            return sndSz;
         }
-        int sndSz = dpsenddgram(dp, (char *)sbuff + sendtotal, chunk_sz);
-        if (sndSz < 0) return sndSz;
-        sendtotal += sndSz;
+        sendtotal -= sndSz;
+        sptr += sendtotal;
     }
 
     return sendtotal;
@@ -295,28 +299,33 @@ int dpsend(dp_connp dp, void *sbuff, int sbuff_sz){
 
 static int dpsenddgram(dp_connp dp, void *sbuff, int sbuff_sz){
     int bytesOut = 0;
+    int chunk_sz = 0;
 
     if(!dp->outSockAddr.isAddrInit) {
         perror("dpsend:dp connection not setup properly");
         return DP_ERROR_GENERAL;
     }
 
-    if(sbuff_sz > DP_MAX_BUFF_SZ)
-        return DP_ERROR_GENERAL;
+    if(sbuff_sz > DP_MAX_BUFF_SZ) {
+        chunk_sz = DP_MAX_BUFF_SZ;
+    } else {
+        chunk_sz = sbuff_sz;
+    }
 
     //Build the PDU and out buffer
     dp_pdu *outPdu = (dp_pdu *)_dpBuffer;
-    int    sndSz = sbuff_sz;
     outPdu->proto_ver = DP_PROTO_VER_1;
-    outPdu->mtype = DP_MT_SND;
-    outPdu->dgram_sz = sndSz;
+    if(sbuff_sz > DP_MAX_BUFF_SZ) {
+        outPdu->mtype = DP_MT_SNDFRAG;
+    } else {
+        outPdu->mtype = DP_MT_SND;
+    }
+    outPdu->dgram_sz = chunk_sz;
     outPdu->seqnum = dp->seqNum;
 
-    memcpy((_dpBuffer + sizeof(dp_pdu)), sbuff, sndSz);
-
+    memcpy((_dpBuffer + sizeof(dp_pdu)), sbuff, chunk_sz);
     int totalSendSz = outPdu->dgram_sz + sizeof(dp_pdu);
     bytesOut = dpsendraw(dp, _dpBuffer, totalSendSz);
-
     if(bytesOut != totalSendSz){
         printf("Warning send %d, but expected %d!\n", bytesOut, totalSendSz);
     }
@@ -334,7 +343,7 @@ static int dpsenddgram(dp_connp dp, void *sbuff, int sbuff_sz){
         printf("Expected SND/ACK but got a different mtype %d\n", inPdu.mtype);
     }
 
-    return bytesOut - sizeof(dp_pdu);
+    return chunk_sz;
 }
 
 
@@ -501,7 +510,11 @@ static char * pdu_msg_to_string(dp_pdu *pdu) {
         case DP_MT_ACK:
             return "ACK";     
         case DP_MT_SND:
-            return "SEND";      
+            return "SEND";
+        case DP_MT_SNDFRAG:
+            return "SEND/FRAG";
+        case DP_MT_SNDFRAGACK:
+            return "SEND/FRAG/ACK";      
         case DP_MT_CONNECT:
             return "CONNECT";   
         case DP_MT_CLOSE:

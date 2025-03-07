@@ -9,7 +9,7 @@
 #include "du-proto.h"
 
 
-#define BUFF_SZ 1000
+#define BUFF_SZ 1500
 static char sbuffer[BUFF_SZ];
 static char rbuffer[BUFF_SZ];
 static char full_file_path[FNAME_SZ];

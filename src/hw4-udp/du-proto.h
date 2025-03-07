@@ -47,8 +47,12 @@ typedef struct dp_connection *dp_connp;
 
 //Message ACKS, ACK OR'ed with Message Type
 #define DP_MT_SNDACK    (DP_MT_SND     | DP_MT_ACK)
+#define DP_MT_SNDFRAG   (DP_MT_SND     | DP_MT_FRAGMENT)
+#define DP_MT_SNDFRAGACK (DP_MT_SNDACK | DP_MT_FRAGMENT)
 #define DP_MT_CNTACK    (DP_MT_CONNECT | DP_MT_ACK)
 #define DP_MT_CLOSEACK  (DP_MT_CLOSE   | DP_MT_ACK)
+
+#define IS_MT_FRAGMENT(x) ((x & DP_MT_FRAGMENT) == DP_MT_FRAGMENT)
 
 typedef struct dp_pdu {
     int     proto_ver;
