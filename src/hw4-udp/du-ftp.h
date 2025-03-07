@@ -13,3 +13,19 @@ typedef struct prog_config{
     char    svr_ip_addr[16];
     char    file_name[128];
 } prog_config;
+
+#define DU_FTP_TYPE_REQUEST  1
+#define DU_FTP_TYPE_DATA     2
+#define DU_FTP_TYPE_ERROR    4
+#define DU_FTP_TYPE_CLOSE    8
+
+#define DU_FTP_STATUS_OK     0
+#define DU_FTP_STATUS_ERR    -1
+#define DU_FTP_STATUS_NOT_FOUND -2
+
+typedef struct du_ftp_pdu {
+    int version;
+    int mtype;
+    int msg_sz;
+    int seqnum;
+} du_ftp_pdu;

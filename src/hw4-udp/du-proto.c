@@ -119,7 +119,24 @@ dp_connp dpClientInit(char *addr, int port) {
 
 
 int dprecv(dp_connp dp, void *buff, int buff_sz){
-
+    int recvtotal = 0;
+    int chunk_sz = 0;
+    
+    // Instead of rejecting datagrams greater than the biggest, we can break
+    // them down into sizeable chunks 
+    while (recvtotal < buff_sz) {
+        if (buff_sz - recvtotal > DP_MAX_BUFF_SZ) {
+            chunk_sz = DP_MAX_BUFF_SZ;
+        } else {
+            chunk_sz = buff_sz - recvtotal;
+        }
+        int rcvLen = dprecvdgram(dp, (char *)buff + recvtotal, chunk_sz);
+        if (rcvLen < 0) return rcvLen;
+        recvtotal += rcvLen;
+        if (rcvLen < chunk_sz) break;
+    }
+    return recvtotal;
+    /*
     dp_pdu *inPdu;
     int rcvLen = dprecvdgram(dp, _dpBuffer, sizeof(_dpBuffer));
 
@@ -131,6 +148,7 @@ int dprecv(dp_connp dp, void *buff, int buff_sz){
         memcpy(buff, (_dpBuffer+sizeof(dp_pdu)), inPdu->dgram_sz);
 
     return inPdu->dgram_sz;
+    */
 }
 
 
@@ -245,9 +263,26 @@ static int dprecvraw(dp_connp dp, void *buff, int buff_sz){
 }
 
 int dpsend(dp_connp dp, void *sbuff, int sbuff_sz){
+    int sendtotal = 0;
+    int chunk_sz = 0;
 
+    // Instead of rejecting datagrams greater than the biggest, we can break
+    // them down into sizeable chunks 
+    while (sendtotal < sbuff_sz) {
+        if (sbuff_sz - sendtotal > DP_MAX_BUFF_SZ) {
+            chunk_sz = DP_MAX_BUFF_SZ;
+        } else {
+            chunk_sz = sbuff_sz - sendtotal;
+        }
+        int sndSz = dpsenddgram(dp, (char *)sbuff + sendtotal, chunk_sz);
+        if (sndSz < 0) return sndSz;
+        sendtotal += sndSz;
+    }
+
+    return sendtotal;
 
     //For now, we will not be able to send larger than the biggest datagram
+    /*
     if(sbuff_sz > dpmaxdgram()) {
         return DP_BUFF_UNDERSIZED;
     }
@@ -255,6 +290,7 @@ int dpsend(dp_connp dp, void *sbuff, int sbuff_sz){
     int sndSz = dpsenddgram(dp, sbuff, sbuff_sz);
 
     return sndSz;
+    */
 }
 
 static int dpsenddgram(dp_connp dp, void *sbuff, int sbuff_sz){

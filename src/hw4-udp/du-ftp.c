@@ -9,7 +9,7 @@
 #include "du-proto.h"
 
 
-#define BUFF_SZ 512
+#define BUFF_SZ 1000
 static char sbuffer[BUFF_SZ];
 static char rbuffer[BUFF_SZ];
 static char full_file_path[FNAME_SZ];
@@ -107,13 +107,12 @@ int server_loop(dp_connp dpc, void *sBuff, void *rBuff, int sbuff_sz, int rbuff_
 
 
 void start_client(dp_connp dpc){
-    static char sBuff[500];
+    static char sBuff[BUFF_SZ];
 
     if(!dpc->isConnected) {
         printf("Client not connected\n");
         return;
     }
-
 
     FILE *f = fopen(full_file_path, "rb");
     if(f == NULL){
@@ -129,7 +128,7 @@ void start_client(dp_connp dpc){
 
     while ((bytes = fread(sBuff, 1, sizeof(sBuff), f )) > 0)
         dpsend(dpc, sBuff, bytes);
-
+    
     fclose(f);
     dpdisconnect(dpc);
 }
